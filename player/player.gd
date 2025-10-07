@@ -16,9 +16,13 @@ var current_speed: float = 0.0
 var moving: bool = false
 var input_dir: Vector2 = Vector2.ZERO
 var direction: Vector3 = Vector3.ZERO
-const crouching_depth: float = -0.65
+const crouching_depth: float = -0.9
 const jump_velocity: float = 4.0
 
+var lerp_speed: float = 10
+
+#Player Settings
+var base_fov: float = 90
 var mouse_sensitivity: float = 0.2
 
 enum PlayerState {
@@ -33,7 +37,7 @@ enum PlayerState {
 var player_state: PlayerState = PlayerState.IDLE_STAND
 
 func _ready() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Input.mouse_mode = Input.MOUSE_MODE_CONFINED
 
 func _input(event: InputEvent) -> void:
 	if Input.is_action_just_pressed("quit"):
@@ -48,7 +52,7 @@ func _input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	
 	updatePlayerState()
-	#updateCamera()
+	updateCamera(delta)
 	
 	#falling
 	if not is_on_floor():
@@ -88,6 +92,43 @@ func updatePlayerState() -> void:
 				player_state = PlayerState.SPRINTING
 			else:
 				player_state = PlayerState.WALKING
-			
+				
+	updatePlayerColShape(player_state)
+	updatePlayerSpeed(player_state)
+
+func updatePlayerColShape(_player_state: PlayerState) -> void:
+	if _player_state == PlayerState.CROUCHING or _player_state == PlayerState.IDLE_CROUCH:
+		standing_collision_shape.disabled = true
+		crouching_collision_shape.disabled = false
+	else:
+		standing_collision_shape.disabled = false
+		crouching_collision_shape.disabled = true
+
+	
+func updatePlayerSpeed(_player_state: PlayerState) -> void:
+	if _player_state == PlayerState.CROUCHING or _player_state == PlayerState.IDLE_CROUCH:
+		current_speed = crouching_speed
+	elif _player_state == PlayerState.WALKING:
+		current_speed = walking_speed
+	elif  _player_state == PlayerState.SPRINTING:
+		current_speed = sprinting_speed
+		
+func updateCamera(delta: float) -> void:
+	if player_state == PlayerState.AIR:
+		pass
+		
+	if player_state == PlayerState.CROUCHING or player_state == PlayerState.IDLE_CROUCH:
+		head.position.y = lerp(head.position.y, 1.8 + crouching_depth, delta*lerp_speed)
+		camera_3d.fov = lerp(camera_3d.fov, base_fov*0.95, delta*lerp_speed)
+	elif player_state == PlayerState.IDLE_STAND:
+		head.position.y = lerp(head.position.y, 1.8, delta*lerp_speed)
+		camera_3d.fov = lerp(camera_3d.fov, base_fov, delta*lerp_speed)
+	elif player_state == PlayerState.WALKING:
+		head.position.y = lerp(head.position.y, 1.8, delta*lerp_speed)
+		camera_3d.fov = lerp(camera_3d.fov, base_fov, delta*lerp_speed)
+	elif  player_state == PlayerState.SPRINTING:
+		head.position.y = lerp(head.position.y, 1.8, delta*lerp_speed)
+		camera_3d.fov = lerp(camera_3d.fov, base_fov*1.05, delta*lerp_speed)
+
 	
 	
